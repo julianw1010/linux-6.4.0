@@ -1295,6 +1295,8 @@ static struct mm_struct *mm_init(struct mm_struct *mm, struct task_struct *p,
 		mm->def_flags = 0;
 	}
 
+	mm->cache_only_mode = false;
+
 	if (mm_alloc_pgd(mm))
 		goto fail_nopgd;
 
@@ -1679,6 +1681,7 @@ static struct mm_struct *dup_mm(struct task_struct *tsk,
 {
 	struct mm_struct *mm;
 	int err;
+	bool saved_cache_only_mode = oldmm->cache_only_mode;
 
 	mm = allocate_mm();
 	if (!mm)
@@ -1688,6 +1691,8 @@ static struct mm_struct *dup_mm(struct task_struct *tsk,
 
 	if (!mm_init(mm, tsk, mm->user_ns))
 		goto fail_nomem;
+
+	mm->cache_only_mode = saved_cache_only_mode;
 
 	err = dup_mmap(mm, oldmm);
 	if (err)

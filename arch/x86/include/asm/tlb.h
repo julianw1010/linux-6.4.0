@@ -5,6 +5,7 @@
 #define tlb_flush tlb_flush
 static inline void tlb_flush(struct mmu_gather *tlb);
 
+#include <linux/ptcache.h>
 #include <asm-generic/tlb.h>
 
 static inline void tlb_flush(struct mmu_gather *tlb)
@@ -31,6 +32,9 @@ static inline void tlb_flush(struct mmu_gather *tlb)
  */
 static inline void __tlb_remove_table(void *table)
 {
+	if (ptcache_return_page((struct page *)table))
+		return;
+
 	free_page_and_swap_cache(table);
 }
 

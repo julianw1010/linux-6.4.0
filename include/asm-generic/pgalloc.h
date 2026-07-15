@@ -4,6 +4,8 @@
 
 #ifdef CONFIG_MMU
 
+#include <linux/ptcache.h>
+
 #define GFP_PGTABLE_KERNEL	(GFP_KERNEL | __GFP_ZERO)
 #define GFP_PGTABLE_USER	(GFP_PGTABLE_KERNEL | __GFP_ACCOUNT)
 
@@ -60,7 +62,9 @@ static inline pgtable_t __pte_alloc_one(struct mm_struct *mm, gfp_t gfp)
 {
 	struct page *pte;
 
-	pte = alloc_page(gfp);
+	pte = ptcache_alloc(mm, gfp);
+	if (!pte)
+		pte = alloc_page(gfp);
 	if (!pte)
 		return NULL;
 	if (!pgtable_pte_page_ctor(pte)) {
@@ -99,6 +103,8 @@ static inline pgtable_t pte_alloc_one(struct mm_struct *mm)
 static inline void pte_free(struct mm_struct *mm, struct page *pte_page)
 {
 	pgtable_pte_page_dtor(pte_page);
+	if (ptcache_return_page(pte_page))
+		return;
 	__free_page(pte_page);
 }
 
@@ -123,7 +129,9 @@ static inline pmd_t *pmd_alloc_one(struct mm_struct *mm, unsigned long addr)
 
 	if (mm == &init_mm)
 		gfp = GFP_PGTABLE_KERNEL;
-	page = alloc_page(gfp);
+	page = ptcache_alloc(mm, gfp);
+	if (!page)
+		page = alloc_page(gfp);
 	if (!page)
 		return NULL;
 	if (!pgtable_pmd_page_ctor(page)) {
@@ -139,6 +147,8 @@ static inline void pmd_free(struct mm_struct *mm, pmd_t *pmd)
 {
 	BUG_ON((unsigned long)pmd & (PAGE_SIZE-1));
 	pgtable_pmd_page_dtor(virt_to_page(pmd));
+	if (ptcache_return_page(virt_to_page(pmd)))
+		return;
 	free_page((unsigned long)pmd);
 }
 #endif
@@ -150,9 +160,13 @@ static inline void pmd_free(struct mm_struct *mm, pmd_t *pmd)
 static inline pud_t *__pud_alloc_one(struct mm_struct *mm, unsigned long addr)
 {
 	gfp_t gfp = GFP_PGTABLE_USER;
+	struct page *page;
 
 	if (mm == &init_mm)
 		gfp = GFP_PGTABLE_KERNEL;
+	page = ptcache_alloc(mm, gfp);
+	if (page)
+		return (pud_t *)page_address(page);
 	return (pud_t *)get_zeroed_page(gfp);
 }
 
@@ -175,6 +189,8 @@ static inline pud_t *pud_alloc_one(struct mm_struct *mm, unsigned long addr)
 static inline void __pud_free(struct mm_struct *mm, pud_t *pud)
 {
 	BUG_ON((unsigned long)pud & (PAGE_SIZE-1));
+	if (ptcache_return_page(virt_to_page(pud)))
+		return;
 	free_page((unsigned long)pud);
 }
 

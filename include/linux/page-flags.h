@@ -136,6 +136,7 @@ enum pageflags {
 	PG_arch_2,
 	PG_arch_3,
 #endif
+	PG_ptcache,
 	__NR_PAGEFLAGS,
 
 	PG_readahead = PG_reclaim,
@@ -500,6 +501,7 @@ PAGEFLAG(SwapBacked, swapbacked, PF_NO_TAIL)
  * - PG_private and PG_private_2 cause release_folio() and co to be invoked
  */
 PAGEFLAG(Private, private, PF_ANY)
+PAGEFLAG(PtCache, ptcache, PF_ANY)
 PAGEFLAG(Private2, private_2, PF_ANY) TESTSCFLAG(Private2, private_2, PF_ANY)
 PAGEFLAG(OwnerPriv1, owner_priv_1, PF_ANY)
 	TESTCLEARFLAG(OwnerPriv1, owner_priv_1, PF_ANY)

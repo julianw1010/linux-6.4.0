@@ -294,4 +294,8 @@ struct prctl_mm_map {
 
 #define PR_SET_MEMORY_MERGE		67
 #define PR_GET_MEMORY_MERGE		68
+
+#define PR_SET_PGTABLE_CACHE_ONLY	102
+#define PR_GET_PGTABLE_CACHE_ONLY	103
+
 #endif /* _LINUX_PRCTL_H */

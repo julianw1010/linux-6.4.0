@@ -2708,6 +2708,21 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
 		error = !!test_bit(MMF_VM_MERGE_ANY, &me->mm->flags);
 		break;
 #endif
+	case PR_SET_PGTABLE_CACHE_ONLY:
+		if (arg3 || arg4 || arg5)
+			return -EINVAL;
+		if (!me->mm)
+			return -EINVAL;
+		WRITE_ONCE(me->mm->cache_only_mode, arg2 != 0);
+		error = 0;
+		break;
+	case PR_GET_PGTABLE_CACHE_ONLY:
+		if (arg2 || arg3 || arg4 || arg5)
+			return -EINVAL;
+		if (!me->mm)
+			return -EINVAL;
+		error = READ_ONCE(me->mm->cache_only_mode) ? 1 : 0;
+		break;
 	default:
 		error = -EINVAL;
 		break;

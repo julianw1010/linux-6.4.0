@@ -150,9 +150,13 @@ static inline void pgd_populate_safe(struct mm_struct *mm, pgd_t *pgd, p4d_t *p4
 static inline p4d_t *p4d_alloc_one(struct mm_struct *mm, unsigned long addr)
 {
 	gfp_t gfp = GFP_KERNEL_ACCOUNT;
+	struct page *page;
 
 	if (mm == &init_mm)
 		gfp &= ~__GFP_ACCOUNT;
+	page = ptcache_alloc(mm, gfp);
+	if (page)
+		return (p4d_t *)page_address(page);
 	return (p4d_t *)get_zeroed_page(gfp);
 }
 
@@ -162,6 +166,8 @@ static inline void p4d_free(struct mm_struct *mm, p4d_t *p4d)
 		return;
 
 	BUG_ON((unsigned long)p4d & (PAGE_SIZE-1));
+	if (ptcache_return_page(virt_to_page(p4d)))
+		return;
 	free_page((unsigned long)p4d);
 }
 
