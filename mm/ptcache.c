@@ -296,8 +296,16 @@ static const struct proc_ops ptcache_proc_ops = {
 
 static int __init ptcache_proc_init(void)
 {
-	if (!proc_create("ptcache", 0644, NULL, &ptcache_proc_ops))
+	struct proc_dir_entry *dir;
+
+	dir = proc_mkdir("ptcache", NULL);
+	if (!dir)
 		return -ENOMEM;
+
+	if (!proc_create("cache", 0644, dir, &ptcache_proc_ops)) {
+		proc_remove(dir);
+		return -ENOMEM;
+	}
 
 	return 0;
 }
