@@ -18,6 +18,7 @@
 #include <asm/cacheflush.h>
 #include <asm/apic.h>
 #include <asm/perf_event.h>
+#include <linux/ptcache.h>
 
 #include "mm_internal.h"
 
@@ -1026,6 +1027,11 @@ void flush_tlb_mm_range(struct mm_struct *mm, unsigned long start,
 	 * flush_tlb_func_local() directly in this case.
 	 */
 	if (cpumask_any_but(mm_cpumask(mm), cpu) < nr_cpu_ids) {
+		long remote = cpumask_weight(mm_cpumask(mm));
+
+		if (cpumask_test_cpu(cpu, mm_cpumask(mm)))
+			remote--;
+		ptcache_stats_tlb_ipi(mm, remote);
 		flush_tlb_multi(mm_cpumask(mm), info);
 	} else if (mm == this_cpu_read(cpu_tlbstate.loaded_mm)) {
 		lockdep_assert_irqs_enabled();

@@ -72,6 +72,7 @@ static inline pgtable_t __pte_alloc_one(struct mm_struct *mm, gfp_t gfp)
 		return NULL;
 	}
 
+	ptcache_stats_pt_inc(mm, page_to_nid(pte), PTCACHE_PT_PTE);
 	return pte;
 }
 
@@ -102,6 +103,7 @@ static inline pgtable_t pte_alloc_one(struct mm_struct *mm)
  */
 static inline void pte_free(struct mm_struct *mm, struct page *pte_page)
 {
+	ptcache_stats_pt_dec(mm, page_to_nid(pte_page), PTCACHE_PT_PTE);
 	pgtable_pte_page_dtor(pte_page);
 	if (ptcache_return_page(pte_page))
 		return;
@@ -138,6 +140,7 @@ static inline pmd_t *pmd_alloc_one(struct mm_struct *mm, unsigned long addr)
 		__free_page(page);
 		return NULL;
 	}
+	ptcache_stats_pt_inc(mm, page_to_nid(page), PTCACHE_PT_PMD);
 	return (pmd_t *)page_address(page);
 }
 #endif
@@ -146,6 +149,7 @@ static inline pmd_t *pmd_alloc_one(struct mm_struct *mm, unsigned long addr)
 static inline void pmd_free(struct mm_struct *mm, pmd_t *pmd)
 {
 	BUG_ON((unsigned long)pmd & (PAGE_SIZE-1));
+	ptcache_stats_pt_dec(mm, page_to_nid(virt_to_page(pmd)), PTCACHE_PT_PMD);
 	pgtable_pmd_page_dtor(virt_to_page(pmd));
 	if (ptcache_return_page(virt_to_page(pmd)))
 		return;
@@ -161,13 +165,19 @@ static inline pud_t *__pud_alloc_one(struct mm_struct *mm, unsigned long addr)
 {
 	gfp_t gfp = GFP_PGTABLE_USER;
 	struct page *page;
+	pud_t *pud;
 
 	if (mm == &init_mm)
 		gfp = GFP_PGTABLE_KERNEL;
 	page = ptcache_alloc(mm, gfp);
 	if (page)
-		return (pud_t *)page_address(page);
-	return (pud_t *)get_zeroed_page(gfp);
+		pud = (pud_t *)page_address(page);
+	else
+		pud = (pud_t *)get_zeroed_page(gfp);
+	if (pud)
+		ptcache_stats_pt_inc(mm, page_to_nid(virt_to_page(pud)),
+				     PTCACHE_PT_PUD);
+	return pud;
 }
 
 #ifndef __HAVE_ARCH_PUD_ALLOC_ONE
@@ -189,6 +199,7 @@ static inline pud_t *pud_alloc_one(struct mm_struct *mm, unsigned long addr)
 static inline void __pud_free(struct mm_struct *mm, pud_t *pud)
 {
 	BUG_ON((unsigned long)pud & (PAGE_SIZE-1));
+	ptcache_stats_pt_dec(mm, page_to_nid(virt_to_page(pud)), PTCACHE_PT_PUD);
 	if (ptcache_return_page(virt_to_page(pud)))
 		return;
 	free_page((unsigned long)pud);

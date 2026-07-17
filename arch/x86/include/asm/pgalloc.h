@@ -151,13 +151,19 @@ static inline p4d_t *p4d_alloc_one(struct mm_struct *mm, unsigned long addr)
 {
 	gfp_t gfp = GFP_KERNEL_ACCOUNT;
 	struct page *page;
+	p4d_t *p4d;
 
 	if (mm == &init_mm)
 		gfp &= ~__GFP_ACCOUNT;
 	page = ptcache_alloc(mm, gfp);
 	if (page)
-		return (p4d_t *)page_address(page);
-	return (p4d_t *)get_zeroed_page(gfp);
+		p4d = (p4d_t *)page_address(page);
+	else
+		p4d = (p4d_t *)get_zeroed_page(gfp);
+	if (p4d)
+		ptcache_stats_pt_inc(mm, page_to_nid(virt_to_page(p4d)),
+				     PTCACHE_PT_P4D);
+	return p4d;
 }
 
 static inline void p4d_free(struct mm_struct *mm, p4d_t *p4d)
@@ -166,6 +172,7 @@ static inline void p4d_free(struct mm_struct *mm, p4d_t *p4d)
 		return;
 
 	BUG_ON((unsigned long)p4d & (PAGE_SIZE-1));
+	ptcache_stats_pt_dec(mm, page_to_nid(virt_to_page(p4d)), PTCACHE_PT_P4D);
 	if (ptcache_return_page(virt_to_page(p4d)))
 		return;
 	free_page((unsigned long)p4d);

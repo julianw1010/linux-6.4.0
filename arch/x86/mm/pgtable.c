@@ -6,6 +6,7 @@
 #include <asm/tlb.h>
 #include <asm/fixmap.h>
 #include <asm/mtrr.h>
+#include <linux/ptcache.h>
 
 #ifdef CONFIG_DYNAMIC_PHYSICAL_MASK
 phys_addr_t physical_mask __ro_after_init = (1ULL << __PHYSICAL_MASK_SHIFT) - 1;
@@ -429,6 +430,9 @@ pgd_t *pgd_alloc(struct mm_struct *mm)
 	if (pgd == NULL)
 		goto out;
 
+	ptcache_stats_pt_inc(mm, page_to_nid(virt_to_page(pgd)),
+			     PTCACHE_PT_PGD);
+
 	mm->pgd = pgd;
 
 	if (sizeof(pmds) != 0 &&
@@ -474,6 +478,8 @@ out:
 
 void pgd_free(struct mm_struct *mm, pgd_t *pgd)
 {
+	ptcache_stats_pt_dec(mm, page_to_nid(virt_to_page(pgd)),
+			     PTCACHE_PT_PGD);
 	pgd_mop_up_pmds(mm, pgd);
 	pgd_dtor(pgd);
 	paravirt_pgd_free(mm, pgd);

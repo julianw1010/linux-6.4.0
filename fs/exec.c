@@ -68,6 +68,7 @@
 #include <linux/user_events.h>
 
 #include <linux/uaccess.h>
+#include <linux/ptcache.h>
 #include <asm/mmu_context.h>
 #include <asm/tlb.h>
 
@@ -1867,6 +1868,8 @@ static int bprm_execve(struct linux_binprm *bprm,
 	user_events_execve(current);
 	acct_update_integrals(current);
 	task_numa_free(current, false);
+	if (current->mm->cache_only_mode)
+		ptcache_stats_mark_enabled(current->mm);
 	return retval;
 
 out:
