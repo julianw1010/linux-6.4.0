@@ -40,6 +40,7 @@
 
 #include <asm/tlb.h>
 #include <asm/pgalloc.h>
+#include <linux/ptcache.h>
 #include "internal.h"
 #include "swap.h"
 
@@ -1548,6 +1549,7 @@ vm_fault_t do_huge_pmd_numa_page(struct vm_fault *vmf)
 
 	migrated = migrate_misplaced_page(page, vma, target_nid);
 	if (migrated) {
+		ptcache_stats_numa(vma->vm_mm, true, page_nid, target_nid);
 		flags |= TNF_MIGRATED;
 		page_nid = target_nid;
 	} else {
