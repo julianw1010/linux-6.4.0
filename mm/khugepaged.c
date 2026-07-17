@@ -21,6 +21,7 @@
 #include <linux/shmem_fs.h>
 
 #include <asm/tlb.h>
+#include <linux/ptcache.h>
 #include <asm/pgalloc.h>
 #include "internal.h"
 #include "mm_slot.h"
@@ -1230,6 +1231,8 @@ out_up_write:
 out_nolock:
 	if (hpage)
 		put_page(hpage);
+	if (result == SCAN_SUCCEED)
+		ptcache_stats_thp_collapse(mm);
 	trace_mm_collapse_huge_page(mm, result == SCAN_SUCCEED, result);
 	return result;
 }
@@ -2295,6 +2298,8 @@ rollback:
 	put_page(hpage);
 out:
 	VM_BUG_ON(!list_empty(&pagelist));
+	if (result == SCAN_SUCCEED)
+		ptcache_stats_thp_collapse(mm);
 	trace_mm_khugepaged_collapse_file(mm, hpage, index, is_shmem, addr, file, nr, result);
 	return result;
 }
