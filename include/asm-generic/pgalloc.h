@@ -72,6 +72,7 @@ static inline pgtable_t __pte_alloc_one(struct mm_struct *mm, gfp_t gfp)
 		return NULL;
 	}
 
+	pte->ptcache_mm = mm;
 	ptcache_stats_pt_inc(mm, page_to_nid(pte), PTCACHE_PT_PTE);
 	return pte;
 }
@@ -140,6 +141,7 @@ static inline pmd_t *pmd_alloc_one(struct mm_struct *mm, unsigned long addr)
 		__free_page(page);
 		return NULL;
 	}
+	page->ptcache_mm = mm;
 	ptcache_stats_pt_inc(mm, page_to_nid(page), PTCACHE_PT_PMD);
 	return (pmd_t *)page_address(page);
 }
@@ -174,9 +176,11 @@ static inline pud_t *__pud_alloc_one(struct mm_struct *mm, unsigned long addr)
 		pud = (pud_t *)page_address(page);
 	else
 		pud = (pud_t *)get_zeroed_page(gfp);
-	if (pud)
+	if (pud) {
+		virt_to_page(pud)->ptcache_mm = mm;
 		ptcache_stats_pt_inc(mm, page_to_nid(virt_to_page(pud)),
 				     PTCACHE_PT_PUD);
+	}
 	return pud;
 }
 

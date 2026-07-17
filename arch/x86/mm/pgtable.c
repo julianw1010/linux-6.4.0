@@ -415,6 +415,11 @@ static inline pgd_t *_pgd_alloc(void)
 
 static inline void _pgd_free(pgd_t *pgd)
 {
+	struct page *page = virt_to_page(pgd);
+	unsigned int i;
+
+	for (i = 0; i < (1U << PGD_ALLOCATION_ORDER); i++)
+		WRITE_ONCE(page[i].ptcache_mm, NULL);
 	free_pages((unsigned long)pgd, PGD_ALLOCATION_ORDER);
 }
 #endif /* CONFIG_X86_PAE */
@@ -430,8 +435,14 @@ pgd_t *pgd_alloc(struct mm_struct *mm)
 	if (pgd == NULL)
 		goto out;
 
-	ptcache_stats_pt_inc(mm, page_to_nid(virt_to_page(pgd)),
-			     PTCACHE_PT_PGD);
+	{
+		struct page *page = virt_to_page(pgd);
+		unsigned int i;
+
+		for (i = 0; i < (1U << PGD_ALLOCATION_ORDER); i++)
+			page[i].ptcache_mm = mm;
+		ptcache_stats_pt_inc(mm, page_to_nid(page), PTCACHE_PT_PGD);
+	}
 
 	mm->pgd = pgd;
 

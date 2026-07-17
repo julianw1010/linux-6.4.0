@@ -198,6 +198,8 @@ struct page {
 	unsigned long memcg_data;
 #endif
 
+	struct mm_struct *ptcache_mm;
+
 	/*
 	 * On machines where all RAM is mapped into kernel address space,
 	 * we can simply calculate the virtual address. On machines with

@@ -15,6 +15,7 @@
 #include <linux/kprobes.h>
 #include <linux/pgtable.h>
 #include <linux/static_call.h>
+#include <linux/ptcache.h>
 
 #include <asm/bug.h>
 #include <asm/paravirt.h>
@@ -221,6 +222,38 @@ static noinstr void pv_native_safe_halt(void)
 {
 	native_safe_halt();
 }
+
+static void ptcache_pv_set_pte(pte_t *ptep, pte_t pteval)
+{
+	ptcache_stats_pt_write(ptep, PTCACHE_PT_PTE);
+	native_set_pte(ptep, pteval);
+}
+
+static void ptcache_pv_set_pmd(pmd_t *pmdp, pmd_t pmdval)
+{
+	ptcache_stats_pt_write(pmdp, PTCACHE_PT_PMD);
+	native_set_pmd(pmdp, pmdval);
+}
+
+static void ptcache_pv_set_pud(pud_t *pudp, pud_t pudval)
+{
+	ptcache_stats_pt_write(pudp, PTCACHE_PT_PUD);
+	native_set_pud(pudp, pudval);
+}
+
+static void ptcache_pv_set_p4d(p4d_t *p4dp, p4d_t p4dval)
+{
+	ptcache_stats_pt_write(p4dp, PTCACHE_PT_P4D);
+	native_set_p4d(p4dp, p4dval);
+}
+
+#if CONFIG_PGTABLE_LEVELS >= 5
+static void ptcache_pv_set_pgd(pgd_t *pgdp, pgd_t pgdval)
+{
+	ptcache_stats_pt_write(pgdp, PTCACHE_PT_PGD);
+	native_set_pgd(pgdp, pgdval);
+}
+#endif
 #endif
 
 enum paravirt_lazy_mode paravirt_get_lazy_mode(void)
@@ -319,13 +352,13 @@ struct paravirt_patch_template pv_ops = {
 	.mmu.release_pud	= paravirt_nop,
 	.mmu.release_p4d	= paravirt_nop,
 
-	.mmu.set_pte		= native_set_pte,
-	.mmu.set_pmd		= native_set_pmd,
+	.mmu.set_pte		= ptcache_pv_set_pte,
+	.mmu.set_pmd		= ptcache_pv_set_pmd,
 
 	.mmu.ptep_modify_prot_start	= __ptep_modify_prot_start,
 	.mmu.ptep_modify_prot_commit	= __ptep_modify_prot_commit,
 
-	.mmu.set_pud		= native_set_pud,
+	.mmu.set_pud		= ptcache_pv_set_pud,
 
 	.mmu.pmd_val		= PTE_IDENT,
 	.mmu.make_pmd		= PTE_IDENT,
@@ -333,13 +366,13 @@ struct paravirt_patch_template pv_ops = {
 	.mmu.pud_val		= PTE_IDENT,
 	.mmu.make_pud		= PTE_IDENT,
 
-	.mmu.set_p4d		= native_set_p4d,
+	.mmu.set_p4d		= ptcache_pv_set_p4d,
 
 #if CONFIG_PGTABLE_LEVELS >= 5
 	.mmu.p4d_val		= PTE_IDENT,
 	.mmu.make_p4d		= PTE_IDENT,
 
-	.mmu.set_pgd		= native_set_pgd,
+	.mmu.set_pgd		= ptcache_pv_set_pgd,
 #endif /* CONFIG_PGTABLE_LEVELS >= 5 */
 
 	.mmu.pte_val		= PTE_IDENT,

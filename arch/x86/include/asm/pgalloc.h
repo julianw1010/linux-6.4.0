@@ -160,9 +160,11 @@ static inline p4d_t *p4d_alloc_one(struct mm_struct *mm, unsigned long addr)
 		p4d = (p4d_t *)page_address(page);
 	else
 		p4d = (p4d_t *)get_zeroed_page(gfp);
-	if (p4d)
+	if (p4d) {
+		virt_to_page(p4d)->ptcache_mm = mm;
 		ptcache_stats_pt_inc(mm, page_to_nid(virt_to_page(p4d)),
 				     PTCACHE_PT_P4D);
+	}
 	return p4d;
 }
 
