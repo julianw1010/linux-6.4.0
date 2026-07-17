@@ -23,6 +23,7 @@
 #include <asm/coco.h>
 #include <asm-generic/pgtable_uffd.h>
 #include <linux/page_table_check.h>
+#include <linux/ptcache.h>
 
 extern pgd_t early_top_pgt[PTRS_PER_PGD];
 bool __init __early_make_pgtable(unsigned long address, pmdval_t pmd);
@@ -1066,7 +1067,10 @@ extern int ptep_clear_flush_young(struct vm_area_struct *vma,
 static inline pte_t ptep_get_and_clear(struct mm_struct *mm, unsigned long addr,
 				       pte_t *ptep)
 {
-	pte_t pte = native_ptep_get_and_clear(ptep);
+	pte_t pte;
+
+	ptcache_stats_pt_write(ptep, PTCACHE_PT_PTE);
+	pte = native_ptep_get_and_clear(ptep);
 	page_table_check_pte_clear(mm, addr, pte);
 	return pte;
 }
@@ -1082,6 +1086,7 @@ static inline pte_t ptep_get_and_clear_full(struct mm_struct *mm,
 		 * Full address destruction in progress; paravirt does not
 		 * care about updates and native needs no locking
 		 */
+		ptcache_stats_pt_write(ptep, PTCACHE_PT_PTE);
 		pte = native_local_ptep_get_and_clear(ptep);
 		page_table_check_pte_clear(mm, addr, pte);
 	} else {
@@ -1094,6 +1099,7 @@ static inline pte_t ptep_get_and_clear_full(struct mm_struct *mm,
 static inline void ptep_set_wrprotect(struct mm_struct *mm,
 				      unsigned long addr, pte_t *ptep)
 {
+	ptcache_stats_pt_write(ptep, PTCACHE_PT_PTE);
 	clear_bit(_PAGE_BIT_RW, (unsigned long *)&ptep->pte);
 }
 
@@ -1130,7 +1136,10 @@ static inline int pmd_write(pmd_t pmd)
 static inline pmd_t pmdp_huge_get_and_clear(struct mm_struct *mm, unsigned long addr,
 				       pmd_t *pmdp)
 {
-	pmd_t pmd = native_pmdp_get_and_clear(pmdp);
+	pmd_t pmd;
+
+	ptcache_stats_pt_write(pmdp, PTCACHE_PT_PMD);
+	pmd = native_pmdp_get_and_clear(pmdp);
 
 	page_table_check_pmd_clear(mm, addr, pmd);
 
@@ -1141,7 +1150,10 @@ static inline pmd_t pmdp_huge_get_and_clear(struct mm_struct *mm, unsigned long 
 static inline pud_t pudp_huge_get_and_clear(struct mm_struct *mm,
 					unsigned long addr, pud_t *pudp)
 {
-	pud_t pud = native_pudp_get_and_clear(pudp);
+	pud_t pud;
+
+	ptcache_stats_pt_write(pudp, PTCACHE_PT_PUD);
+	pud = native_pudp_get_and_clear(pudp);
 
 	page_table_check_pud_clear(mm, addr, pud);
 
@@ -1152,6 +1164,7 @@ static inline pud_t pudp_huge_get_and_clear(struct mm_struct *mm,
 static inline void pmdp_set_wrprotect(struct mm_struct *mm,
 				      unsigned long addr, pmd_t *pmdp)
 {
+	ptcache_stats_pt_write(pmdp, PTCACHE_PT_PMD);
 	clear_bit(_PAGE_BIT_RW, (unsigned long *)pmdp);
 }
 
@@ -1166,6 +1179,7 @@ static inline int pud_write(pud_t pud)
 static inline pmd_t pmdp_establish(struct vm_area_struct *vma,
 		unsigned long address, pmd_t *pmdp, pmd_t pmd)
 {
+	ptcache_stats_pt_write(pmdp, PTCACHE_PT_PMD);
 	page_table_check_pmd_set(vma->vm_mm, address, pmdp, pmd);
 	if (IS_ENABLED(CONFIG_SMP)) {
 		return xchg(pmdp, pmd);
